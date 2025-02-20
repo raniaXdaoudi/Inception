@@ -14,18 +14,9 @@ The project must contain exactly:
   - WordPress + php-fpm container (without NGINX)
   - MariaDB container
 - 2 volumes:
-  - WordPress database
-  - WordPress website files
+  - WordPress database (/home/$(USER)/data/mysql/)
+  - WordPress website files (/home/$(USER)/data/wordpress/)
 - 1 docker-network that establishes the connection between containers
-
-## Bonus Services (Optional)
-
-Additional containers can be added for:
-- Redis cache for WordPress
-- FTP server
-- Static website
-- Adminer
-- Service of your choice
 
 ## Technologies Used
 - Docker & Docker Compose
@@ -50,38 +41,46 @@ Additional containers can be added for:
 
 ```
 Inception/
-├── Makefile
-├── srcs/
-│   ├── docker-compose.yml
-│   ├── .env
-│   └── requirements/
-│       ├── nginx/
-│       │   ├── Dockerfile
-│       │   ├── conf/
-│       │   └── tools/
-│       ├── wordpress/
-│       │   ├── Dockerfile
-│       │   ├── conf/
-│       │   └── tools/
-│       └── mariadb/
-│           ├── Dockerfile
-│           ├── conf/
-│           └── tools/
-└── volumes/
-    ├── wordpress/
-    └── mariadb/
+├── README.md
+└── inception/
+    ├── Makefile
+    └── srcs/
+        ├── docker-compose.yml
+        ├── .env
+        └── requirements/
+            ├── nginx/
+            │   ├── Dockerfile
+            │   ├── conf/
+            │   └── tools/
+            ├── wordpress/
+            │   ├── Dockerfile
+            │   ├── conf/
+            │   └── tools/
+            └── mariadb/
+                ├── Dockerfile
+                ├── conf/
+                └── tools/
 ```
 
 ### Environment Variables
 Required environment variables in `.env`:
 ```env
-DOMAIN_NAME=login.42.fr
-CERTS_=/etc/ssl/certs/inception.crt
-KEY_=/etc/ssl/private/inception.key
-DB_NAME=wordpress
-DB_ROOT=rootpass
-DB_USER=wpuser
-DB_PASS=wppass
+# Domain
+DOMAIN_NAME=radaoudi.42.fr
+
+# MariaDB
+MYSQL_DATABASE=wordpress
+MYSQL_USER=wp_user
+MYSQL_PASSWORD=wp_password
+MYSQL_ROOT_PASSWORD=root_password
+
+# WordPress
+WP_ADMIN_USER=superuser
+WP_ADMIN_PASSWORD=admin_password
+WP_ADMIN_EMAIL=admin@example.com
+WP_USER=user1
+WP_USER_PASSWORD=user1_password
+WP_USER_EMAIL=user1@example.com
 ```
 
 ## Implementation Details
@@ -89,12 +88,12 @@ DB_PASS=wppass
 The setup must:
 1. Use Docker Compose for orchestration
 2. Build all images from scratch
-3. Configure SSL/TLS for NGINX
-4. Set up WordPress with php-fpm
-5. Configure MariaDB for data persistence
+3. Configure SSL/TLS for NGINX with self-signed certificate
+4. Set up WordPress with php-fpm and two users (admin and regular)
+5. Configure MariaDB for data persistence with database creation at build
 6. Establish container networking
 7. Ensure service auto-restart
-8. Mount volumes for data persistence
+8. Mount volumes for data persistence in /home/$(USER)/data/
 
 ## Container Specifications
 
@@ -102,7 +101,7 @@ The setup must:
 - Built from Alpine/Debian
 - Only TLSv1.2 or TLSv1.3
 - Listens on port 443 only
-- SSL/TLS configuration
+- SSL/TLS configuration with self-signed certificate
 - Connects to WordPress container
 
 ### WordPress + php-fpm Container
@@ -111,36 +110,47 @@ The setup must:
 - php-fpm configuration
 - No NGINX
 - Connected to MariaDB
+- Two users configured:
+  - Admin user (superuser with all privileges)
+  - Regular user (user1 with author role)
 
 ### MariaDB Container
 - Built from Alpine/Debian
-- Data persistence through volume
+- Data persistence through volume in /home/$(USER)/data/mysql/
 - Secure initial setup
 - No root access from outside
+- Database created during container build
+- User privileges configured at startup
 
 ## Building and Usage
 ```bash
-# Build and start all services
+# Prepare environment, build and start services
 make
 
-# Stop all services
-make stop
+# Start services
+make up
 
-# Clean everything
+# Stop services
+make down
+
+# Clean (prune and remove data)
+make clean
+
+# Full cleanup (including volumes)
 make fclean
 
-# Rebuild all
+# Rebuild everything
 make re
 ```
 
 ## Testing
 Verify the setup by:
 - Accessing WordPress via HTTPS (port 443)
-- Testing database persistence
+- Testing database persistence in /home/$(USER)/data/mysql/
 - Checking container logs
 - Verifying auto-restart functionality
 - Validating SSL/TLS configuration
-- Testing volume persistence
+- Testing volume persistence in both data directories
 
 ## Authors
 Project developed by:
