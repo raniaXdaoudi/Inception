@@ -1,0 +1,64 @@
+services:
+  nginx:
+    build: ./requirements/nginx
+    ports:
+      - "443:443"
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      - wordpress
+    restart: unless-stopped
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD", "curl", "-k", "https://localhost:443"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  wordpress:
+    build: ./requirements/wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    env_file:
+      - .env
+    restart: always
+    networks:
+      - inception
+
+  mariadb:
+    build: ./requirements/mariadb
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    env_file:
+      - .env
+    restart: always
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/radaoudi/data/wordpress
+      o: bind
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/radaoudi/data/mysql
+      o: bind
+
+networks:
+  inception:
+    driver: bridge
