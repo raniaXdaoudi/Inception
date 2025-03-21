@@ -1,69 +1,67 @@
 #!/bin/bash
 
-# Fonction de logging
-log() {
-    echo "[MariaDB Init] $1"
-}
+# Create directories if needed
+mkdir -p /var/run/mysqld
+chown -R mysql:mysql /var/run/mysqld /var/lib/mysql
 
-# Vérification des variables d'environnement
-if [ -z "$MYSQL_DATABASE" ] || [ -z "$MYSQL_USER" ] || [ -z "$MYSQL_PASSWORD" ] || [ -z "$MYSQL_ROOT_PASSWORD" ]; then
-    log "Error: Required environment variables are not set"
-    exit 1
-fi
-
-# Création des répertoires nécessaires
-log "Creating necessary directories..."
-mkdir -p /var/run/mysqld /var/lib/mysql /var/log/mysql
-chown -R mysql:mysql /var/run/mysqld /var/lib/mysql /var/log/mysql
-chmod 777 /var/run/mysqld
-chmod 755 /var/log/mysql
-
-# Initialisation de la base de données si nécessaire
+# Check if this is the first run
 if [ ! -d "/var/lib/mysql/mysql" ]; then
-    log "Initializing MariaDB database..."
-    mysql_install_db --user=mysql --datadir=/var/lib/mysql --basedir=/usr > /dev/null 2>&1
+    echo "Initializing MariaDB data directory..."
+    mysql_install_db --user=mysql --datadir=/var/lib/mysql
 
-    # Démarrer MariaDB temporairement
-    log "Starting temporary MariaDB server..."
-    mysqld --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0 --skip-networking=0 &
-    
-    # Attendre que MariaDB soit prêt
-    until mysqladmin ping -h localhost --silent; do
-        log "Waiting for MariaDB to be ready..."
-        sleep 1
+    # Start MariaDB in background
+    /usr/bin/mysqld_safe --datadir=/var/lib/mysql &
+
+    # Wait for MariaDB to start
+    until mysqladmin ping >/dev/null 2>&1; do
+        echo "Waiting for MariaDB to be ready..."
+        sleep 2
     done
 
-    log "Configuring MariaDB..."
-    mysql -u root << EOF
--- Nettoyage initial
-DELETE FROM mysql.user WHERE User='';
-DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
-
--- Création de la base de données
+    # Create database and users
+    echo "Creating database and users..."
+    mysql -u root <<EOF
 CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};
-
--- Configuration de root
+CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-CREATE USER 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-GRANT ALL ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
-GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION;
-
--- Configuration de l'utilisateur WordPress
-CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
-GRANT ALL ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
-
 FLUSH PRIVILEGES;
 EOF
 
-    # Arrêter le serveur temporaire
-    log "Stopping temporary MariaDB server..."
-    mysqladmin -u root shutdown
-    
-    log "Initial database configuration completed"
+    # Stop the temporary server
+    mysqladmin -u root -p${MYSQL_ROOT_PASSWORD} shutdown
+    echo "MariaDB initialization completed!"
+else
+    echo "MariaDB data directory already exists. Checking if initialization is needed..."
+    # Start MariaDB in background for potential adjustments
+    /usr/bin/mysqld_safe --datadir=/var/lib/mysql &
+
+    # Wait for MariaDB to start
+    until mysqladmin ping >/dev/null 2>&1; do
+        echo "Waiting for MariaDB to be ready..."
+        sleep 2
+    done
+
+    # Check if our user exists
+    mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e "SELECT User FROM mysql.user WHERE User='${MYSQL_USER}'" | grep -q ${MYSQL_USER}
+    USER_EXISTS=$?
+
+    if [ $USER_EXISTS -ne 0 ]; then
+        echo "User ${MYSQL_USER} doesn't exist. Creating..."
+        mysql -uroot -p${MYSQL_ROOT_PASSWORD} <<EOF
+CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};
+CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
+FLUSH PRIVILEGES;
+EOF
+    else
+        echo "User ${MYSQL_USER} already exists."
+    fi
+
+    # Stop the temporary server
+    mysqladmin -u root -p${MYSQL_ROOT_PASSWORD} shutdown
 fi
 
-# Démarrer MariaDB normalement
-log "Starting MariaDB server..."
-log "MariaDB will listen on 0.0.0.0:3306"
-exec mysqld --user=mysql --bind-address=0.0.0.0 --skip-networking=0 --console
+# Start MariaDB in foreground
+echo "Starting MariaDB in foreground..."
+exec mysqld --user=mysql

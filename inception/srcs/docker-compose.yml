@@ -1,34 +1,4 @@
 services:
-  nginx:
-    build: ./requirements/nginx
-    ports:
-      - "443:443"
-    volumes:
-      - wordpress_data:/var/www/html
-    depends_on:
-      - wordpress
-    restart: unless-stopped
-    networks:
-      - inception
-    healthcheck:
-      test: ["CMD", "curl", "-k", "https://localhost:443"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  wordpress:
-    build: ./requirements/wordpress
-    volumes:
-      - wordpress_data:/var/www/html
-    depends_on:
-      mariadb:
-        condition: service_healthy
-    env_file:
-      - .env
-    restart: always
-    networks:
-      - inception
-
   mariadb:
     build: ./requirements/mariadb
     volumes:
@@ -43,7 +13,37 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 30s
+
+  wordpress:
+    build: ./requirements/wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    env_file:
+      - .env
+    restart: always
+    networks:
+      - inception
+
+  nginx:
+    build: ./requirements/nginx
+    ports:
+      - "443:443"
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      - wordpress
+    restart: always
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD", "curl", "-k", "https://localhost:443"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   wordpress_data:

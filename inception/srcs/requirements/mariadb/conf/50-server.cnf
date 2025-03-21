@@ -7,32 +7,32 @@ basedir = /usr
 datadir = /var/lib/mysql
 tmpdir = /tmp
 
-# Configuration des connexions
+# Connection configuration
 bind-address = 0.0.0.0
 skip-networking = 0
 skip-name-resolve
 max_connections = 100
 
-# Configuration de sécurité
+# Security configuration
 max_allowed_packet = 64M
 wait_timeout = 28800
 interactive_timeout = 28800
 
-# Configuration des logs
+# Log configuration
 log_error = /var/log/mysql/error.log
 log_warnings = 4
 general_log = 1
 general_log_file = /var/log/mysql/general.log
 
-# Configuration InnoDB
+# InnoDB configuration
 innodb_buffer_pool_size = 256M
 innodb_log_buffer_size = 8M
 innodb_file_per_table = 1
 innodb_flush_method = O_DIRECT
 
-# Configuration réseau supplémentaire
+# Additional network configuration
 max_connect_errors = 1000
 connect_timeout = 60
 
-# Configuration d'authentification
+# Authentication configuration
 skip-host-cache

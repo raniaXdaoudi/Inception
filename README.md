@@ -51,15 +51,24 @@ Inception/
             ├── nginx/
             │   ├── Dockerfile
             │   ├── conf/
+            │   │   ├── main-nginx.conf
+            │   │   ├── nginx.conf
+            │   │   ├── nginx.crt
+            │   │   └── nginx.key
             │   └── tools/
+            │       └── init.sh
             ├── wordpress/
             │   ├── Dockerfile
             │   ├── conf/
+            │   │   └── www.conf
             │   └── tools/
+            │       └── init.sh
             └── mariadb/
                 ├── Dockerfile
                 ├── conf/
+                │   └── 50-server.cnf
                 └── tools/
+                    └── init.sh
 ```
 
 ### Environment Variables
@@ -103,6 +112,10 @@ The setup must:
 - Listens on port 443 only
 - SSL/TLS configuration with self-signed certificate
 - Connects to WordPress container
+- Configuration files:
+  - main-nginx.conf: Main NGINX configuration
+  - nginx.conf: Default site configuration
+  - nginx.crt/nginx.key: SSL certificate and private key
 
 ### WordPress + php-fpm Container
 - Built from Alpine/Debian
@@ -113,6 +126,8 @@ The setup must:
 - Two users configured:
   - Admin user (superuser with all privileges)
   - Regular user (user1 with author role)
+- Configuration files:
+  - www.conf: PHP-FPM pool configuration
 
 ### MariaDB Container
 - Built from Alpine/Debian
@@ -121,6 +136,8 @@ The setup must:
 - No root access from outside
 - Database created during container build
 - User privileges configured at startup
+- Configuration files:
+  - 50-server.cnf: MariaDB server configuration with optimized settings
 
 ## Building and Usage
 ```bash
@@ -163,3 +180,8 @@ This project is part of the 42 school curriculum. Please refer to 42's policies 
 - 42 school for providing project requirements
 - Docker documentation
 - NGINX, WordPress, and MariaDB documentation
+
+## Recent Updates
+- Added comprehensive configuration files for all services
+- Improved container initialization scripts
+- Optimized MariaDB server configuration for better performance
